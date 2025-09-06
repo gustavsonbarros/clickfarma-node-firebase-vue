@@ -102,6 +102,8 @@ app.listen(PORT, () => {
   // Lista de rotas disponíveis
   console.log('📋 Rotas disponíveis:');
   console.log('   POST   /api/auth/register');
+  console.log('   POST   /api/auth/login');
+  console.log('   POST   /api/auth/forgot-password');
   console.log('   POST   /api/auth/verify-token');
   console.log('   GET    /api/profile/me');
   console.log('   GET    /api/health');

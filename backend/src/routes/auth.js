@@ -1,7 +1,7 @@
 // backend/src/routes/auth.js
 const express = require('express');
 const router = express.Router();
-const { validateRegister, validateLogin } = require('../middleware/validateAuth');
+const { validateRegister, validateLogin, validateForgotPassword } = require('../middleware/validateAuth');
 const { auth, db } = require('../config/firebase');
 
 // POST /api/auth/register
@@ -138,6 +138,59 @@ router.post('/login', validateLogin, async (req, res) => {
     }
     
     res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// POST /api/auth/forgot-password
+router.post('/forgot-password', validateForgotPassword, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // 1. Verificar se o email existe
+    try {
+      const userRecord = await auth.getUserByEmail(email);
+      
+      // 2. Gerar link de redefinição de senha
+      const actionCodeSettings = {
+        url: process.env.FRONTEND_URL || 'http://localhost:8080/login',
+        handleCodeInApp: true
+      };
+      
+      // 3. Gerar link de reset (Firebase cuida do envio de email)
+      const resetLink = await auth.generatePasswordResetLink(email, actionCodeSettings);
+      
+      // 4. Log para desenvolvimento (em produção, usar serviço de email)
+      console.log('🔗 Link de redefinição (desenvolvimento):', resetLink);
+      
+      // 5. Retornar sucesso (não revelar se email existe por segurança)
+      res.status(200).json({
+        success: true,
+        message: 'Email de redefinição enviado com sucesso!',
+        // Em produção, remover o link do response
+        resetLink: process.env.NODE_ENV === 'development' ? resetLink : undefined
+      });
+
+    } catch (error) {
+      // Por segurança, sempre retornar sucesso mesmo se email não existir
+      if (error.code === 'auth/user-not-found') {
+        return res.status(200).json({
+          success: true,
+          message: 'Se o email existir, você receberá instruções de redefinição'
+        });
+      }
+      throw error;
+    }
+
+  } catch (error) {
+    console.error('Erro em forgot-password:', error);
+    
+    if (error.code === 'auth/invalid-email') {
+      return res.status(400).json({ error: 'Email inválido' });
+    }
+    
+    res.status(500).json({ 
+      error: 'Erro ao processar solicitação. Tente novamente.' 
+    });
   }
 });
 
