@@ -1,4 +1,3 @@
-// backend/src/config/firebase.js
 const admin = require('firebase-admin');
 const path = require('path');
 require('dotenv').config();
@@ -13,7 +12,7 @@ admin.initializeApp({
   storageBucket: process.env.FIREBASE_STORAGE_BUCKET
 });
 
-// Exporta as instâncias para usar em outros arquivos
+
 const db = admin.firestore();
 const storage = admin.storage();
 const auth = admin.auth();
