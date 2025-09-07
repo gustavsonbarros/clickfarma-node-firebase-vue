@@ -55,32 +55,6 @@ class ProductRepository {
     }
   }
 
-  // Buscar produtos por termo de busca
-  async search(searchTerm, limit = 20, offset = 0) {
-    try {
-      // Busca simples - em produção use Algolia ou Elasticsearch
-      const snapshot = await this.collection
-        .where('isActive', '==', true)
-        .get();
-
-      if (snapshot.empty) return [];
-
-      const allProducts = snapshot.docs.map(doc => Product.fromFirestore(doc));
-      
-      // Filtra localmente (para desenvolvimento)
-      const filteredProducts = allProducts.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.activePrinciple.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-
-      // Paginação manual
-      return filteredProducts.slice(offset, offset + limit);
-    } catch (error) {
-      throw new Error(`Erro na busca de produtos: ${error.message}`);
-    }
-  }
-
   // Atualizar produto
   async update(id, updateData) {
     try {
@@ -148,6 +122,59 @@ class ProductRepository {
       console.error('💥 ERRO GRAVE no findAll:', error);
       console.error('📋 Stack:', error.stack);
       throw error; // Propaga o erro original
+    }
+  }
+
+  // ✅ Buscar produtos por termo de busca - MELHORADO
+  async search(searchTerm, limit = 20, offset = 0) {
+    try {
+      console.log('🔍 Buscando produtos por termo:', searchTerm);
+      
+      // Busca simples - versão temporária para desenvolvimento
+      const snapshot = await this.collection
+        .where('isActive', '==', true)
+        .get();
+
+      if (snapshot.empty) {
+        console.log('ℹ️  Nenhum produto encontrado na busca');
+        return [];
+      }
+
+      const allProducts = [];
+      snapshot.forEach(doc => {
+        allProducts.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      // Filtra localmente (para desenvolvimento)
+      const filteredProducts = allProducts.filter(product =>
+        product.name && product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.activePrinciple && product.activePrinciple.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+
+      console.log('✅ Resultados da busca:', filteredProducts.length, 'produtos encontrados');
+
+      // Paginação manual
+      return filteredProducts.slice(offset, offset + limit);
+
+    } catch (error) {
+      console.error('💥 ERRO na busca de produtos:', error);
+      console.error('📋 Stack:', error.stack);
+      throw new Error(`Erro na busca de produtos: ${error.message}`);
+    }
+  }
+
+  // ✅ Contagem para busca (para paginação)
+  async searchCount(searchTerm) {
+    try {
+      const products = await this.search(searchTerm, 1000, 0); // Busca todos para contar
+      return products.length;
+    } catch (error) {
+      console.error('💥 ERRO ao contar resultados da busca:', error);
+      return 0;
     }
   }
 }
