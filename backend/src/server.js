@@ -5,7 +5,6 @@ process.env.PORT = '3000';
 process.env.NODE_ENV = 'development';
 process.env.FRONTEND_URL = 'http://localhost:8080';
 
-
 const express = require('express');
 const cors = require('cors');
 
@@ -17,8 +16,8 @@ const PORT = process.env.PORT || 3000;
 // ======================
 const authRoutes = require('./routes/auth');
 const profileRoutes = require('./routes/profile');
+const productRoutes = require('./routes/products');
 // Futuras rotas:
-// const productRoutes = require('./routes/products');
 // const orderRoutes = require('./routes/orders');
 
 // ======================
@@ -36,8 +35,8 @@ app.use(express.urlencoded({ extended: true })); // Para parsing de formulários
 // ======================
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/products', productRoutes);
 // Futuras rotas:
-// app.use('/api/products', productRoutes);
 // app.use('/api/orders', orderRoutes);
 
 // ======================
@@ -106,6 +105,8 @@ app.listen(PORT, () => {
   console.log('   POST   /api/auth/forgot-password');
   console.log('   POST   /api/auth/verify-token');
   console.log('   GET    /api/profile/me');
+  console.log('   GET    /api/products');
+  console.log('   GET    /api/products/categories');
   console.log('   GET    /api/health');
   console.log('='.repeat(50));
 });

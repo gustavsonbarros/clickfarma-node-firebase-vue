@@ -1,10 +1,13 @@
 const { db } = require('../config/firebase');
-const Product = require('../models/Product');
+// const Product = require('../models/Product'); // 🔇 Comentado temporariamente
 
 class ProductRepository {
   constructor() {
     this.collection = db.collection('products');
   }
+
+  /*
+  // 🔇 Métodos comentados para teste - descomente depois
 
   // Criar novo produto
   async create(productData) {
@@ -33,24 +36,6 @@ class ProductRepository {
     }
   }
 
-  // Listar todos os produtos ativos
-  async findAll(limit = 20, offset = 0) {
-    try {
-      const snapshot = await this.collection
-        .where('isActive', '==', true)
-        .orderBy('createdAt', 'desc')
-        .limit(limit)
-        .offset(offset)
-        .get();
-
-      if (snapshot.empty) return [];
-
-      return snapshot.docs.map(doc => Product.fromFirestore(doc));
-    } catch (error) {
-      throw new Error(`Erro ao listar produtos: ${error.message}`);
-    }
-  }
-
   // Buscar produtos por categoria
   async findByCategory(category, limit = 20, offset = 0) {
     try {
@@ -67,6 +52,32 @@ class ProductRepository {
       return snapshot.docs.map(doc => Product.fromFirestore(doc));
     } catch (error) {
       throw new Error(`Erro ao buscar por categoria: ${error.message}`);
+    }
+  }
+
+  // Buscar produtos por termo de busca
+  async search(searchTerm, limit = 20, offset = 0) {
+    try {
+      // Busca simples - em produção use Algolia ou Elasticsearch
+      const snapshot = await this.collection
+        .where('isActive', '==', true)
+        .get();
+
+      if (snapshot.empty) return [];
+
+      const allProducts = snapshot.docs.map(doc => Product.fromFirestore(doc));
+      
+      // Filtra localmente (para desenvolvimento)
+      const filteredProducts = allProducts.filter(product =>
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.activePrinciple.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+
+      // Paginação manual
+      return filteredProducts.slice(offset, offset + limit);
+    } catch (error) {
+      throw new Error(`Erro na busca de produtos: ${error.message}`);
     }
   }
 
@@ -102,6 +113,41 @@ class ProductRepository {
       return snapshot.data().count;
     } catch (error) {
       throw new Error(`Erro ao contar produtos: ${error.message}`);
+    }
+  }
+  */
+
+  // ✅ Listar todos os produtos ativos - SUPER SIMPLIFICADO (PARA TESTE)
+  async findAll(limit = 20, offset = 0) {
+    try {
+      console.log('🔄 Tentando buscar produtos no Firestore...');
+      
+      // Tentativa MUITO simples - sem filtros complexos
+      const snapshot = await this.collection.limit(5).get();
+      
+      console.log('✅ Snapshot obtido com', snapshot.size, 'documentos');
+      
+      if (snapshot.empty) {
+        console.log('ℹ️  Nenhum produto encontrado na coleção');
+        return [];
+      }
+
+      const products = [];
+      snapshot.forEach(doc => {
+        console.log('📄 Documento encontrado:', doc.id);
+        products.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+
+      console.log('🎉 Produtos processados:', products.length);
+      return products;
+
+    } catch (error) {
+      console.error('💥 ERRO GRAVE no findAll:', error);
+      console.error('📋 Stack:', error.stack);
+      throw error; // Propaga o erro original
     }
   }
 }

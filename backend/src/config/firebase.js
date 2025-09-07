@@ -26,5 +26,10 @@ const db = admin.firestore();
 const storage = admin.storage();
 const auth = admin.auth();
 
+// Teste a conexão com Firestore
+db.collection('test').doc('test').get()
+  .then(() => console.log('✅ Conexão com Firestore OK'))
+  .catch(error => console.error('❌ Erro na conexão Firestore:', error));
+
 // Exporte tudo
 module.exports = { admin, db, storage, auth, app };
