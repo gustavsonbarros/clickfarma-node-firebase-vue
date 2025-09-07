@@ -91,24 +91,55 @@ class ProductRepository {
   }
   */
 
-  // ✅ Listar todos os produtos ativos - SUPER SIMPLIFICADO (PARA TESTE)
-  async findAll(limit = 20, offset = 0) {
+  // ✅ Listar todos os produtos ativos - COM FILTROS AVANÇADOS
+  async findAll(filters = {}, limit = 20, offset = 0) {
     try {
-      console.log('🔄 Tentando buscar produtos no Firestore...');
+      console.log('🔄 Buscando produtos com filtros:', filters);
       
-      // Tentativa MUITO simples - sem filtros complexos
-      const snapshot = await this.collection.limit(5).get();
+      let query = this.collection.where('isActive', '==', true);
+
+      // Aplicar filtros
+      if (filters.category) {
+        query = query.where('category', '==', filters.category);
+        console.log('✅ Filtro categoria:', filters.category);
+      }
+      if (filters.manufacturer) {
+        query = query.where('manufacturer', '==', filters.manufacturer);
+        console.log('✅ Filtro fabricante:', filters.manufacturer);
+      }
+      if (filters.minPrice !== undefined) {
+        query = query.where('price', '>=', parseFloat(filters.minPrice));
+        console.log('✅ Filtro preço mínimo:', filters.minPrice);
+      }
+      if (filters.maxPrice !== undefined) {
+        query = query.where('price', '<=', parseFloat(filters.maxPrice));
+        console.log('✅ Filtro preço máximo:', filters.maxPrice);
+      }
+      if (filters.requiresPrescription !== undefined) {
+        const requiresRx = filters.requiresPrescription === 'true';
+        query = query.where('requiresPrescription', '==', requiresRx);
+        console.log('✅ Filtro receita médica:', requiresRx);
+      }
+
+      // Ordenação
+      const orderByField = filters.sortBy || 'name';
+      const orderDirection = filters.sortOrder === 'desc' ? 'desc' : 'asc';
+      query = query.orderBy(orderByField, orderDirection);
+      console.log('✅ Ordenação:', orderByField, orderDirection);
+
+      query = query.limit(limit);
+
+      const snapshot = await query.get();
       
       console.log('✅ Snapshot obtido com', snapshot.size, 'documentos');
       
       if (snapshot.empty) {
-        console.log('ℹ️  Nenhum produto encontrado na coleção');
+        console.log('ℹ️  Nenhum produto encontrado com os filtros aplicados');
         return [];
       }
 
       const products = [];
       snapshot.forEach(doc => {
-        console.log('📄 Documento encontrado:', doc.id);
         products.push({
           id: doc.id,
           ...doc.data()
@@ -119,9 +150,9 @@ class ProductRepository {
       return products;
 
     } catch (error) {
-      console.error('💥 ERRO GRAVE no findAll:', error);
+      console.error('💥 ERRO no findAll com filtros:', error);
       console.error('📋 Stack:', error.stack);
-      throw error; // Propaga o erro original
+      throw error;
     }
   }
 
@@ -174,6 +205,17 @@ class ProductRepository {
       return products.length;
     } catch (error) {
       console.error('💥 ERRO ao contar resultados da busca:', error);
+      return 0;
+    }
+  }
+
+  // ✅ Contar total de produtos com filtros
+  async countWithFilters(filters = {}) {
+    try {
+      const products = await this.findAll(filters, 1000, 0); // Busca todos para contar
+      return products.length;
+    } catch (error) {
+      console.error('💥 ERRO ao contar com filtros:', error);
       return 0;
     }
   }

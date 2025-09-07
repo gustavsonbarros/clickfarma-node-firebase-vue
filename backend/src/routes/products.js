@@ -2,27 +2,72 @@ const express = require('express');
 const router = express.Router();
 const productRepository = require('../repositories/productRepository');
 
-// GET /api/products - Listar produtos com paginação
+// GET /api/products - Listar produtos com paginação e filtros
 router.get('/', async (req, res) => {
   console.log('🌐 Recebida requisição GET /api/products');
   console.log('📋 Query parameters:', req.query);
   
   try {
-    // ⚠️ Versão simplificada para teste - sem filtros complexos
-    const products = await productRepository.findAll(10, 0);
+    const { 
+      page = 1, 
+      limit = 20,
+      category,
+      manufacturer,
+      minPrice,
+      maxPrice,
+      requiresPrescription,
+      sortBy = 'name',
+      sortOrder = 'asc'
+    } = req.query;
+
+    // Calcular offset para paginação
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Buscar produtos com filtros
+    const products = await productRepository.findAll({
+      category,
+      manufacturer,
+      minPrice,
+      maxPrice,
+      requiresPrescription,
+      sortBy,
+      sortOrder
+    }, parseInt(limit), offset);
+
+    // Contar total para paginação
+    const totalCount = await productRepository.countWithFilters({
+      category,
+      manufacturer,
+      minPrice,
+      maxPrice,
+      requiresPrescription
+    });
+
+    console.log('✅ Sucesso! Retornando', products.length, 'produtos de', totalCount, 'encontrados');
     
-    console.log('✅ Sucesso! Retornando', products.length, 'produtos');
-    
+    // Calcular totais para paginação
+    const totalPages = Math.ceil(totalCount / parseInt(limit));
+    const currentPage = parseInt(page);
+
     res.json({
       success: true,
       data: products,
-      message: `Encontrados ${products.length} produtos`,
-      // ⚠️ Paginação simplificada para teste
       pagination: {
-        currentPage: 1,
-        totalPages: 1,
-        totalItems: products.length,
-        itemsPerPage: 10
+        currentPage,
+        totalPages,
+        totalItems: totalCount,
+        itemsPerPage: parseInt(limit),
+        hasNextPage: currentPage < totalPages,
+        hasPrevPage: currentPage > 1
+      },
+      filters: {
+        category: category || null,
+        manufacturer: manufacturer || null,
+        minPrice: minPrice || null,
+        maxPrice: maxPrice || null,
+        requiresPrescription: requiresPrescription || null,
+        sortBy,
+        sortOrder
       }
     });
 
@@ -75,70 +120,25 @@ router.get('/categories', async (req, res) => {
 /*
 // 🔇 Rotas comentadas para teste - descomente depois
 
-// GET /api/products - Listar produtos com paginação COMPLETA
-router.get('/full', async (req, res) => {
+// GET /api/products/search - Busca por texto (mantida para compatibilidade)
+router.get('/search', async (req, res) => {
   try {
     const { 
+      q: searchTerm, 
       page = 1, 
-      limit = 20, 
-      category, 
-      search,
-      minPrice,
-      maxPrice,
-      sortBy = 'name',
-      sortOrder = 'asc'
+      limit = 20 
     } = req.query;
 
-    // Calcular offset para paginação
     const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    // Buscar produtos com filtros
-    let products;
-    let totalCount;
-
-    if (category) {
-      products = await productRepository.findByCategory(category, parseInt(limit), offset);
-      totalCount = products.length;
-    } else if (search) {
-      products = await productRepository.search(search, parseInt(limit), offset);
-      totalCount = products.length;
-    } else {
-      products = await productRepository.findAll(parseInt(limit), offset);
-      totalCount = await productRepository.count();
-    }
-
-    // Aplicar filtros adicionais
-    let filteredProducts = products;
-
-    if (minPrice || maxPrice) {
-      filteredProducts = filteredProducts.filter(product => {
-        let valid = true;
-        if (minPrice) valid = valid && product.price >= parseFloat(minPrice);
-        if (maxPrice) valid = valid && product.price <= parseFloat(maxPrice);
-        return valid;
-      });
-    }
-
-    // Ordenação
-    filteredProducts.sort((a, b) => {
-      let valueA = a[sortBy] || 0;
-      let valueB = b[sortBy] || 0;
-
-      if (typeof valueA === 'string') valueA = valueA.toLowerCase();
-      if (typeof valueB === 'string') valueB = valueB.toLowerCase();
-
-      if (sortOrder === 'desc') {
-        return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
-      }
-      return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
-    });
+    const products = await productRepository.search(searchTerm, parseInt(limit), offset);
+    const totalCount = await productRepository.searchCount(searchTerm);
 
     const totalPages = Math.ceil(totalCount / parseInt(limit));
     const currentPage = parseInt(page);
 
     res.json({
       success: true,
-      data: filteredProducts,
+      data: products,
       pagination: {
         currentPage,
         totalPages,
@@ -148,20 +148,15 @@ router.get('/full', async (req, res) => {
         hasPrevPage: currentPage > 1
       },
       filters: {
-        category: category || null,
-        search: search || null,
-        minPrice: minPrice || null,
-        maxPrice: maxPrice || null,
-        sortBy,
-        sortOrder
+        search: searchTerm
       }
     });
 
   } catch (error) {
-    console.error('Erro ao listar produtos:', error);
+    console.error('Erro na busca de produtos:', error);
     res.status(500).json({
       success: false,
-      error: 'Erro interno do servidor ao listar produtos'
+      error: 'Erro interno do servidor na busca'
     });
   }
 });
